@@ -54,7 +54,7 @@ const bookSchema = new mongoose.Schema({
         type: Number
     },
     rating: [],
-    reviews: []
+    reviews: [{}]
 })
 
 const Taleb_Book = mongoose.model('Taleb_Book', bookSchema);
