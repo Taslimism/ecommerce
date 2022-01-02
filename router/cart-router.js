@@ -1,17 +1,23 @@
 const express = require('express');
 const mongoose = require('mongoose');
 
-const router = express.Router();
-
 const Cart = require('./../model/cart-model');
-
 const { Knuth_Book, Taleb_Book } = require('./../data/products');
+
+const authorize = require('./../auth/authorize');
+
+const router = express.Router();
 
 router.post('/', async (req, res, next) => {
     const { user_id, product_id, quantity } = req.body;
+    console.log(req.body);
 
     let price = 0;
     let totalPrice = 0;
+    let thumbnail = '';
+    let title = '';
+    let author = '';
+
     try {
         let product = await Knuth_Book.find({ _id: product_id });
         if (product.length === 0) {
@@ -19,6 +25,9 @@ router.post('/', async (req, res, next) => {
         }
         price = product[0].price;
         totalPrice = product[0].price * quantity;
+        thumbnail = product[0].thumbnail;
+        author = product[0].author;
+        title = product[0].title;
     } catch (err) {
         return res.status(500).json({
             status: 'fail',
@@ -36,12 +45,17 @@ router.post('/', async (req, res, next) => {
                 user_id: user_id,
                 price: totalPrice
             })
+
             cartItem.items.push({
                 product_id: product_id,
                 quantity: quantity,
                 price: price,
-                totalPrice: totalPrice
+                totalPrice: totalPrice,
+                thumbnail,
+                author,
+                title
             });
+
             await cartItem.save();
         } else {
             let isOldItem = false;
@@ -58,7 +72,10 @@ router.post('/', async (req, res, next) => {
                     product_id: product_id,
                     quantity: quantity,
                     price: price,
-                    totalPrice: totalPrice
+                    totalPrice: totalPrice,
+                    thumbnail,
+                    author,
+                    title
                 });
                 cart[0].price = totalPrice;
             }
@@ -200,11 +217,12 @@ router.delete('/:itemId', async (req, res, next) => {
     return res.status(204).json({});
 })
 
-router.get('/:userId', async (req, res, next) => {
-    const user_id = req.params.userId;
 
+router.get('/:userId', authorize, async (req, res, next) => {
+    const user_id = req.params.userId;
     try {
         const cart = await Cart.find({ user_id: user_id });
+
         return res.status(200).json({
             status: 'success',
             data: {
@@ -212,6 +230,7 @@ router.get('/:userId', async (req, res, next) => {
             }
         })
     } catch (err) {
+        console.log(err)
         return res.status(500).json({
             status: 'fail',
             data: {

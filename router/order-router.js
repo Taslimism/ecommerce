@@ -7,6 +7,8 @@ const dotenv = require('dotenv');
 const Cart = require("./../model/cart-model");
 const Order = require("./../model/order-model");
 
+const authorize = require('./../auth/authorize');
+
 dotenv.config();
 
 const router = express.Router();
@@ -19,34 +21,32 @@ const rzpInstance = new Razorpay({
     key_secret: secret,
 });
 
-router.get('/', (req, res) => {
-    if (!req.body.userId) {
-        return res.status(400).json({
-            status: 'fail',
-            data: {
-                message: 'Not logged in'
-            }
-        })
-    }
-    Order.find({ userId: req.body.userId, status: 'COMPLETED' })
+router.get('/:user_id', authorize, (req, res) => {
+    Order.find({ user_id: req.params.user_id, status: 'COMPLETED' })
         .then((order) => {
-            console.log(order);
-            res.status(200).send(order);
+
+            res.status(200).json({
+                status: 'success',
+                data: [
+                    order
+                ]
+            });
         })
         .catch((err) => {
             console.log(err);
         });
 });
 
-router.post('/', async (req, res) => {
+router.post('/', authorize, async (req, res) => {
     const userID = req.body.user_id;
     const user_id = mongoose.Types.ObjectId(userID);
+
 
     try {
         const cart = await Cart.findOne({ user_id: user_id });
         const { items, price } = cart;
         const priceInPaise = (Math.round(price * 100) / 100).toFixed(2);
-        const amount = priceInPaise * 100;
+        const amount = Number.parseInt(priceInPaise * 100);
 
         const order = await new Order({ user_id: user_id, amount, currency, status: 'CREATED', items });
         await order.save();
@@ -63,6 +63,7 @@ router.post('/', async (req, res) => {
         //Create order on razorpay
         rzpInstance.orders.create(options, (err, rzpOrder) => {
             if (err) {
+                console.log(err)
                 return res.status(500).json({
                     status: 'fail',
                     data: {
@@ -89,9 +90,11 @@ router.post('/', async (req, res) => {
     }
 });
 
-router.put('/:id', async (req, res) => {
+router.put('/:id', authorize, async (req, res) => {
     const orderId = req.params.id;
-    const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = req.body;
+    const { user_id } = req.body;
+    const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = req.body.rzp_data;
+
 
     if (!razorpay_payment_id || !razorpay_signature) {
         return res.status(400).json({
@@ -106,15 +109,16 @@ router.put('/:id', async (req, res) => {
 
     if (generated_signature === razorpay_signature) {
         await Order.updateOne({ id: orderId }, { $set: { status: 'COMPLETED', razorpay_payment_id, razorpay_order_id, razorpay_signature } }).then(() => {
-            return res.send(204).json({
-                status: 'succes',
+            return res.status(204).json({
+                status: 'success',
                 data: {
                     message: 'Order successfully placed'
                 }
             });
         });
-        //TODO remove the comment after building completely
-        // await Cart.findByIdAndDelete(orderId);
+
+
+        await Cart.deleteOne({ user_id: user_id });
     } else {
         return res.status(400).json({
             status: 'fail',

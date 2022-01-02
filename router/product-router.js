@@ -38,6 +38,27 @@ router.get('/:authorName/:id', async (req, res, next) => {
     const authorName = req.params.authorName;
     const id = req.params.id;
 
+    console.log(authorName);
+
+    if (authorName === 'authorName') {
+        let product = await Taleb_Book.findById(id);
+        if (!product) {
+            product = await Knuth_Book.findById(id);
+        }
+        console.log(product);
+        return res.status(200).json({
+            status: 'success',
+            data: {
+                thumbnail: product.thumbnail,
+                title: product.title,
+                author: product.author,
+                price: product.price,
+                quantity: 1,
+                totalPrice: product.price
+            }
+        })
+    }
+
     let Model;
     if (authorName === 'taleb')
         Model = Taleb_Book;
@@ -72,7 +93,7 @@ router.post('/review/:authorName/:productId', authorize, async (req, res) => {
     const authorName = req.params.authorName;
     const uid = req.body.user_id;
 
-    console.log(pid);
+
     let Model;
     if (authorName === 'taleb')
         Model = Taleb_Book;
