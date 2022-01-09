@@ -95,7 +95,6 @@ router.put('/:id', authorize, async (req, res) => {
     const { user_id } = req.body;
     const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = req.body.rzp_data;
 
-
     if (!razorpay_payment_id || !razorpay_signature) {
         return res.status(400).json({
             status: 'fail',
@@ -108,7 +107,8 @@ router.put('/:id', authorize, async (req, res) => {
     const generated_signature = crypto.createHmac('sha256', secret).update(orderId + "|" + razorpay_payment_id).digest('hex');
 
     if (generated_signature === razorpay_signature) {
-        await Order.updateOne({ id: orderId }, { $set: { status: 'COMPLETED', razorpay_payment_id, razorpay_order_id, razorpay_signature } }).then(() => {
+        await Order.update({ id: orderId }, { $set: { status: 'COMPLETED', razorpay_payment_id, razorpay_order_id, razorpay_signature } }).then(() => {
+            console.log('order completed');
             return res.status(204).json({
                 status: 'success',
                 data: {
@@ -117,9 +117,10 @@ router.put('/:id', authorize, async (req, res) => {
             });
         });
 
-
+        console.log("cart items");
         await Cart.deleteOne({ user_id: user_id });
     } else {
+        console.log("errr");
         return res.status(400).json({
             status: 'fail',
             data: {

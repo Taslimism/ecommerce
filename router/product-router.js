@@ -38,14 +38,14 @@ router.get('/:authorName/:id', async (req, res, next) => {
     const authorName = req.params.authorName;
     const id = req.params.id;
 
-    console.log(authorName);
+    // console.log(authorName);
 
     if (authorName === 'authorName') {
         let product = await Taleb_Book.findById(id);
         if (!product) {
             product = await Knuth_Book.findById(id);
         }
-        console.log(product);
+        // console.log(product);
         return res.status(200).json({
             status: 'success',
             data: {

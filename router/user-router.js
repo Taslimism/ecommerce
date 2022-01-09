@@ -6,6 +6,9 @@ const mongoose = require('mongoose');
 
 const User = require('./../model/user-model');
 
+const auth = require('./../auth/authorize');
+
+
 const router = express.Router();
 dotenv.config();
 
@@ -154,12 +157,13 @@ router.get('/:id', async (req, res, next) => {
     const id = mongoose.Types.ObjectId(req.params);
     try {
         const user = await User.find({ _id: id });
-        const orders = await User.find({ _id: id });
+        //I am not using this to get orders
+        // const orders = await User.find({ _id: id });
         return res.status(200).json({
             status: 'success',
             data: {
-                user: user,
-                orders: orders
+                user: user
+                // orders: orders
             }
         })
     } catch (err) {
@@ -174,7 +178,7 @@ router.get('/:id', async (req, res, next) => {
 })
 
 
-router.put('/:id', async (req, res) => {
+router.put('/:id', auth, async (req, res) => {
     const id = mongoose.Types.ObjectId(req.params);
     const { name, password } = req.body;
 
@@ -195,7 +199,7 @@ router.put('/:id', async (req, res) => {
     }
 })
 
-router.delete('/:id', async (req, res, next) => {
+router.delete('/:id', auth, async (req, res, next) => {
     const id = mongoose.Types.ObjectId(req.params);
     try {
         await User.findByIdAndDelete(id);

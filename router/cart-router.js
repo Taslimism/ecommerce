@@ -10,7 +10,7 @@ const router = express.Router();
 
 router.post('/', async (req, res, next) => {
     const { user_id, product_id, quantity } = req.body;
-    console.log(req.body);
+    // console.log(req.body);
 
     let price = 0;
     let totalPrice = 0;
@@ -84,7 +84,7 @@ router.post('/', async (req, res, next) => {
             await newCart.save();
         }
     } catch (err) {
-        console.log(err);
+        // console.log(err);
         return res.status(500).json({
             status: 'fail',
             data: {
@@ -193,15 +193,29 @@ router.put('/:orderId', async (req, res, next) => {
     })
 })
 
-router.delete('/:itemId', async (req, res, next) => {
-    const { user_id } = req.body;
+router.delete('/:itemId/:userId', async (req, res, next) => {
+    const user_id = req.params.userId;
     const { itemId } = req.params;
+
+    // console.log(req.body);
+    console.log(user_id, itemId);
 
     try {
         const cart = await Cart.find({ user_id: user_id });
-        const newItems = cart[0].items.filter(item => { return item.product_id !== itemId; })
+        const newItems = cart[0].items.filter(item => {
+            console.log(item.id === itemId);
+            return item.id !== itemId;
+        })
+
         cart[0].items = newItems;
-        console.log(cart)
+        if (newItem.length === 0)
+            cart[0].price = 0;
+        else {
+            cart[0].price = newItems.reduce((prevItem, currItem) => {
+                return prevItem.totalPrice + currItem.totalPrice;
+            })
+        }
+
         const updatedCart = new Cart(...cart);
         await updatedCart.save();
 
@@ -230,7 +244,7 @@ router.get('/:userId', authorize, async (req, res, next) => {
             }
         })
     } catch (err) {
-        console.log(err)
+        // console.log(err)
         return res.status(500).json({
             status: 'fail',
             data: {
