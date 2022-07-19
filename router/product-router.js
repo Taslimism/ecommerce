@@ -32,23 +32,25 @@ router.get("/get/allbooks/allkind", (req, res, next) => {
 	const { count, page } = req.query;
 	console.log(count, page);
 
-	Knuth_Book.find()
+	const books = Knuth_Book.find()
 		.skip(count * (page - 1))
-		.limit(count)
-		.exec((err, data) => {
-			if (err) {
-				return res.status(500).json({
-					status: "fail",
-					data: {
-						message: "An unknown error occurred",
-					},
-				});
-			}
-			return res.status(200).json({
-				status: "success",
-				data: [...data],
+		.limit(Number(count));
+	console.log(books);
+	books.exec((err, data) => {
+		if (err) {
+			return res.status(500).json({
+				status: "fail",
+				data: {
+					message: "An unknown error occurred",
+				},
 			});
+		}
+		console.log(data.length);
+		return res.status(200).json({
+			status: "success",
+			data: [...data],
 		});
+	});
 });
 
 router.get("/:authorName/:id", async (req, res, next) => {
