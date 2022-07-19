@@ -28,13 +28,20 @@ router.get("/:authorName", async (req, res, next) => {
 	}
 });
 
-router.get("/get/allbooks/allkind", async (req, res, next) => {
+router.get("/get/allbooks/allkind", (req, res, next) => {
 	const { count, page } = req.query;
 	console.log(count, page);
 	try {
-		products = await Knuth_Book.find()
+		products = Knuth_Book.find()
 			.skip(count * (page - 1))
-			.limit(count);
+			.limit(count)
+			.exec((err, data) => {
+				if (err) throw new Error(err);
+				return res.status(200).json({
+					status: "success",
+					data: [...data],
+				});
+			});
 		return res.status(200).json({
 			status: "success",
 			data: [...products],
