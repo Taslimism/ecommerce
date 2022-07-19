@@ -28,7 +28,7 @@ router.get("/:authorName", async (req, res, next) => {
 	}
 });
 
-router.get("/knuth", async (req, res, next) => {
+router.get("/get/allbooks/allkind", async (req, res, next) => {
 	const { count, page } = req.query;
 	try {
 		products = await Knuth_Book.find({})
