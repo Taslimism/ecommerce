@@ -33,7 +33,7 @@ router.get("/get/allbooks/allkind", async (req, res, next) => {
 	try {
 		products = await Knuth_Book.find({})
 			.skip(count * page)
-			.limit(page);
+			.limit(count);
 		return res.status(200).json({
 			status: "success",
 			data: [...products],
