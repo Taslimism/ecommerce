@@ -1,218 +1,213 @@
-const express = require('express');
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
-const dotenv = require('dotenv');
-const mongoose = require('mongoose');
+const express = require("express");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+const dotenv = require("dotenv");
+const mongoose = require("mongoose");
 
-const User = require('./../model/user-model');
+const User = require("./../model/user-model");
 
-const auth = require('./../auth/authorize');
-
+const auth = require("./../auth/authorize");
 
 const router = express.Router();
 dotenv.config();
 
-router.post('/register', async (req, res, next) => {
-    const { name, email, password } = req.body;
-    if (!name || !email || !password) {
-        return res.status(400).json({
-            status: 'fail',
-            data: {
-                message: 'Please fill in all the fields'
-            }
-        })
-    }
+router.post("/register", async (req, res, next) => {
+	const { name, email, password } = req.body;
+	if (!name || !email || !password) {
+		return res.status(400).json({
+			status: "fail",
+			data: {
+				message: "Please fill in all the fields",
+			},
+		});
+	}
 
-    try {
-        const user = await User.findOne({ email: email });
-        if (user) {
-            return res.status(200).json({
-                status: 'success',
-                data: {
-                    user: user
-                }
-            })
-        }
-    } catch (err) {
+	try {
+		const user = await User.findOne({ email: email });
+		if (user) {
+			return res.status(200).json({
+				status: "success",
+				data: {
+					user: user,
+				},
+			});
+		}
+	} catch (err) {}
 
-    }
+	let newUser;
+	try {
+		const hash = await bcrypt.hash(password, 12);
+		if (hash) {
+			newUser = new User({
+				name: name,
+				email: email,
+				password: hash,
+			});
+			newUser
+				.save()
+				.then((data) => console.log(data))
+				.catch((err) => {
+					throw err;
+				});
+		}
+	} catch (err) {
+		console.log(err);
+		return res.json(500).json({
+			status: "fail",
+			data: {
+				message: "An unknown error occured",
+			},
+		});
+	}
 
-    let newUser;
-    try {
-        const hash = await bcrypt.hash(password, 12);
-        if (hash) {
-            newUser = new User({
-                name: name,
-                email: email,
-                password: hash
-            })
-            newUser.save()
-                .then(data => console.log(data))
-                .catch(err => {
-                    throw err;
-                });
-        }
+	let token;
+	try {
+		token = jwt.sign({ email: email }, process.env.MY_SUPER_SECRET_KEY, {
+			expiresIn: "90d",
+		});
+	} catch (err) {
+		console.log(err);
+		return res.json(500).json({
+			status: "fail",
+			data: {
+				message: "An unknown error occured",
+			},
+		});
+	}
 
-    } catch (err) {
-        console.log(err)
-        return res.json(500).json({
-            status: 'fail',
-            data: {
-                message: 'An unknown error occured'
-            }
-        })
-    }
+	return res.status(201).json({
+		status: "success",
+		token: token,
+		data: {
+			user: newUser,
+		},
+	});
+});
 
-    let token
-    try {
-        token = jwt.sign({ email: email }, process.env.MY_SUPER_SECRET_KEY, { expiresIn: '90d' });
-    } catch (err) {
-        console.log(err);
-        return res.json(500).json({
-            status: 'fail',
-            data: {
-                message: 'An unknown error occured'
-            }
-        })
-    }
+router.post("/login", async (req, res) => {
+	const { email, password } = req.body;
 
-    return res.status(201).json({
-        status: 'success',
-        token: token,
-        data: {
-            user: newUser
-        }
-    })
+	if (!email || !password) {
+		return res.status(400).json({
+			status: "fail",
+			data: {
+				message: "Please fill in all the fields",
+			},
+		});
+	}
 
+	let user;
+	let isAuthenticated;
+	try {
+		user = await User.findOne({ email: email });
+		if (!user) {
+			throw new Error();
+		}
 
-})
+		isAuthenticated = await bcrypt.compare(password, user.password);
+	} catch (err) {
+		return res.status(500).json({
+			status: "fail",
+			message: "Please enter valid email",
+		});
+	}
+	if (!isAuthenticated) {
+		return res.status(401).json({
+			status: "fail",
+			message: "Please enter a valid password",
+		});
+	}
 
+	let token;
+	try {
+		token = await jwt.sign({ email: email }, process.env.MY_SUPER_SECRET_KEY, {
+			expiresIn: "90d",
+		});
+	} catch (err) {
+		return res.json(500).json({
+			status: "fail",
+			data: {
+				message: "An unknown error occured",
+			},
+		});
+	}
 
-router.post('/login', async (req, res) => {
-    const { email, password } = req.body;
+	res.status(200).json({
+		status: "success",
+		token: token,
+		data: {
+			user: user,
+		},
+	});
+});
 
-    if (!email || !password) {
-        return res.status(400).json({
-            status: 'fail',
-            data: {
-                message: 'Please fill in all the fields'
-            }
-        })
-    }
+router.get("/:id", async (req, res, next) => {
+	const id = mongoose.Types.ObjectId(req.params);
+	try {
+		const user = await User.find({ _id: id });
+		//I am not using this to get orders
+		// const orders = await User.find({ _id: id });
+		return res.status(200).json({
+			status: "success",
+			data: {
+				user: user,
+				// orders: orders
+			},
+		});
+	} catch (err) {
+		console.log(err);
+		return res.status(500).json({
+			status: "fail",
+			data: {
+				message: "An unknown error occured",
+			},
+		});
+	}
+});
 
-    let user;
-    let isAuthenticated
-    try {
-        user = await User.findOne({ email: email });
-        if (!user) {
-            throw new Error();
-        }
+router.put("/:id", auth, async (req, res) => {
+	const id = mongoose.Types.ObjectId(req.params);
+	const { name, password } = req.body;
 
-        isAuthenticated = await bcrypt.compare(password, user.password);
+	try {
+		if (name) {
+			const user = await User.findByIdAndUpdate(
+				id,
+				{ $set: { name: name, updatedAt: new Date().getTime() } },
+				{ new: true }
+			);
+		}
+		if (password) {
+			const user = await User.findByIdAndUpdate(
+				id,
+				{ $set: { password: password, updatedAt: new Date().getTime() } },
+				{ new: true }
+			);
+		}
+	} catch (err) {
+		return res.status(500).json({
+			status: "fail",
+			data: {
+				message: "An unknown error occured ",
+			},
+		});
+	}
+});
 
-    } catch (err) {
+router.delete("/:id", auth, async (req, res, next) => {
+	const id = mongoose.Types.ObjectId(req.params);
+	try {
+		await User.findByIdAndDelete(id);
+	} catch (err) {
+		return res.status(500).json({
+			status: "fail",
+			data: {
+				message: "An unknown error occured ",
+			},
+		});
+	}
 
-        return res.status(500).json({
-            status: 'fail',
-
-            data: {
-                message: 'An unknown error occured'
-            }
-        })
-    }
-    if (!isAuthenticated) {
-        return res.status(401).json({
-            status: 'fail',
-            data: {
-                message: 'Please enter a valid password'
-            }
-        })
-    }
-
-    let token;
-    try {
-        token = await jwt.sign({ email: email }, process.env.MY_SUPER_SECRET_KEY, { expiresIn: '90d' });
-
-    } catch (err) {
-        return res.json(500).json({
-            status: 'fail',
-            data: {
-                message: 'An unknown error occured'
-            }
-        })
-    }
-
-    res.status(200).json({
-        status: 'success',
-        token: token,
-        data: {
-            user: user
-        }
-    })
-
-})
-
-
-router.get('/:id', async (req, res, next) => {
-    const id = mongoose.Types.ObjectId(req.params);
-    try {
-        const user = await User.find({ _id: id });
-        //I am not using this to get orders
-        // const orders = await User.find({ _id: id });
-        return res.status(200).json({
-            status: 'success',
-            data: {
-                user: user
-                // orders: orders
-            }
-        })
-    } catch (err) {
-        console.log(err);
-        return res.status(500).json({
-            status: "fail",
-            data: {
-                message: 'An unknown error occured'
-            }
-        })
-    }
-})
-
-
-router.put('/:id', auth, async (req, res) => {
-    const id = mongoose.Types.ObjectId(req.params);
-    const { name, password } = req.body;
-
-    try {
-        if (name) {
-            const user = await User.findByIdAndUpdate(id, { $set: { name: name, updatedAt: new Date().getTime() } }, { new: true });
-        }
-        if (password) {
-            const user = await User.findByIdAndUpdate(id, { $set: { password: password, updatedAt: new Date().getTime() } }, { new: true });
-        }
-    } catch (err) {
-        return res.status(500).json({
-            status: 'fail',
-            data: {
-                message: 'An unknown error occured '
-            }
-        })
-    }
-})
-
-router.delete('/:id', auth, async (req, res, next) => {
-    const id = mongoose.Types.ObjectId(req.params);
-    try {
-        await User.findByIdAndDelete(id);
-    } catch (err) {
-        return res.status(500).json({
-            status: 'fail',
-            data: {
-                message: 'An unknown error occured '
-            }
-        })
-    }
-
-    return res.status(204);
-})
+	return res.status(204);
+});
 
 module.exports = router;

@@ -30,12 +30,11 @@ router.get("/:authorName", async (req, res, next) => {
 
 router.get("/get/allbooks/allkind", (req, res, next) => {
 	const { count, page } = req.query;
-	console.log(count, page);
 
 	const books = Knuth_Book.find()
 		.skip(count * (page - 1))
 		.limit(Number(count));
-	console.log(books);
+
 	books.exec((err, data) => {
 		if (err) {
 			return res.status(500).json({
@@ -45,7 +44,7 @@ router.get("/get/allbooks/allkind", (req, res, next) => {
 				},
 			});
 		}
-		console.log(data.length);
+
 		return res.status(200).json({
 			status: "success",
 			data: [...data],
@@ -57,14 +56,12 @@ router.get("/:authorName/:id", async (req, res, next) => {
 	const authorName = req.params.authorName;
 	const id = req.params.id;
 
-	// console.log(authorName);
-
 	if (authorName === "authorName") {
 		let product = await Taleb_Book.findById(id);
 		if (!product) {
 			product = await Knuth_Book.findById(id);
 		}
-		// console.log(product);
+
 		return res.status(200).json({
 			status: "success",
 			data: {
