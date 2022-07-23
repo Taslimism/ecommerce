@@ -5,6 +5,7 @@ const dotenv = require("dotenv");
 const mongoose = require("mongoose");
 
 const User = require("./../model/user-model");
+const Order = require("./../model/order-model");
 
 const auth = require("./../auth/authorize");
 
@@ -145,13 +146,12 @@ router.get("/:id", async (req, res, next) => {
 	const id = mongoose.Types.ObjectId(req.params);
 	try {
 		const user = await User.find({ _id: id });
-		//I am not using this to get orders
-		// const orders = await User.find({ _id: id });
+		const orders = await Order.find({ user_id: id, status: "COMPLETED" });
 		return res.status(200).json({
 			status: "success",
 			data: {
 				user: user,
-				// orders: orders
+				orders: orders,
 			},
 		});
 	} catch (err) {
@@ -167,22 +167,48 @@ router.get("/:id", async (req, res, next) => {
 
 router.put("/:id", auth, async (req, res) => {
 	const id = mongoose.Types.ObjectId(req.params);
-	const { name, password } = req.body;
+	const { oldPassword, password } = req.body;
+	console.log(oldPassword, password);
 
 	try {
-		if (name) {
-			const user = await User.findByIdAndUpdate(
-				id,
-				{ $set: { name: name, updatedAt: new Date().getTime() } },
-				{ new: true }
-			);
-		}
 		if (password) {
-			const user = await User.findByIdAndUpdate(
-				id,
-				{ $set: { password: password, updatedAt: new Date().getTime() } },
-				{ new: true }
-			);
+			try {
+				const hash = await bcrypt.hash(password, 12);
+				const userr = await User.findById(id);
+				const hashOld = await bcrypt.hash(oldPassword, 12);
+				if (userr.password !== hashOld) {
+					return res.json(500).json({
+						status: "fail",
+						data: {
+							message: "Please enter correct current password",
+						},
+					});
+				}
+				if (hash) {
+					const user = await User.findByIdAndUpdate(
+						id,
+						{
+							$set: {
+								password: hash,
+								updatedAt: new Date().getTime(),
+							},
+						},
+						{ new: true }
+					);
+					return res.json(201).json({
+						status: "success",
+						message: "Passwords updated successfully",
+					});
+				}
+			} catch (err) {
+				console.log(err);
+				return res.json(500).json({
+					status: "fail",
+					data: {
+						message: "An unknown error occured",
+					},
+				});
+			}
 		}
 	} catch (err) {
 		return res.status(500).json({
